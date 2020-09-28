@@ -1,8 +1,9 @@
 library(sf)
 
-# Load the data: the health NGOs table, and the 14 senegalese regions
-ong = read.csv("data/ong.csv")
-reg = st_read("data/regions.geojson", quiet=TRUE)
+# Load the data: the health NGOs table, the 14 senegalese regions, and the senegalese 
+ong = read.csv("data/ngos.csv")
+reg = st_read("data/senegal_regions.gpkg", quiet=TRUE)
+sen = st_read("data/senegal_contour.gpkg", quiet=TRUE)
 
 # Compute the centroid of each region and retrieve coordinates.
 # Conventionnaly, centroid should be computed in planar coordinates, in the EPSG:32628
@@ -10,3 +11,4 @@ reg = st_read("data/regions.geojson", quiet=TRUE)
 centros = suppressWarnings(st_coordinates(st_centroid(reg)))
 reg$lng = centros[,1]
 reg$lat = centros[,2]
+

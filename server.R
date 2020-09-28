@@ -13,11 +13,17 @@ function(input, output, session) {
       fitBounds(bbox[1], bbox[2], bbox[3], bbox[4])
   })
   
-  # Add the  proportionnaIncremental changes to the map use should be performed in an observer
+  # On the static leaflet map previously created, add the data: regions, contour, circles
+  # Incremental changes to the map use should be performed in an observer
   observe({
     leafletProxy("map", data=reg) %>%
+      # Add the 14 senegalese regions
       addPolygons(color="black", weight=2, opacity=0.5, 
                   fillColor="blue", fillOpacity=0.05) %>% 
+      # Add the senegalese border with a thicker contour above
+      addPolygons(data=sen, color="black", weight=4, opacity=0.5, 
+                  fillColor="blue", fillOpacity=0.05) %>% 
+      # On each region centroid (lng-lat), add circles proportionnal to the number of NGOs
       addCircleMarkers(~lng, ~lat, radius=~nb_ong/10,
                        color="red", weight=1, opacity=0.5,
                        fillColor="red", fillOpacity=0.3)
