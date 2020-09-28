@@ -6,12 +6,18 @@ function(input, output, session) {
   
   bb = as.vector(st_bbox(reg))
   
-  # Create the map
+  # Les régions surlignées sont les 
+  # Create the static map, which will be loaded once 
   output$map = renderLeaflet({
     leaflet(reg) %>%
       addTiles(urlTemplate= "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
                attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>') %>%
-      fitBounds(bb[1], bb[2], bb[3], bb[4]) %>%
+      fitBounds(bb[1], bb[2], bb[3], bb[4])
+  })
+  
+  # Incremental changes to the map use should be performed in an observer
+  observe({
+    leafletProxy("map", data=reg) %>%
       addPolygons(color="black", weight=2, opacity=0.5, 
                   fillColor="blue", fillOpacity=0.05) %>% 
       addCircleMarkers(~lng, ~lat, radius=~nb_ong/10,
