@@ -4,18 +4,16 @@ library(sf)
 
 function(input, output, session) {
   
-  bb = as.vector(st_bbox(reg))
-  
-  # Les régions surlignées sont les 
-  # Create the static map, which will be loaded once 
+  # Create the static map, which will be loaded once at startup and then cached
   output$map = renderLeaflet({
-    leaflet(reg) %>%
-      addTiles(urlTemplate= "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
-               attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>') %>%
-      fitBounds(bb[1], bb[2], bb[3], bb[4])
+    bbox = as.vector(st_bbox(reg)) # Retrieve the extent of the Senegal
+    leaflet() %>%
+      addTiles(urlTemplate="//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
+               attribution='Maps by <a href="http://www.mapbox.com/">Mapbox</a>') %>%
+      fitBounds(bbox[1], bbox[2], bbox[3], bbox[4])
   })
   
-  # Incremental changes to the map use should be performed in an observer
+  # Add the  proportionnaIncremental changes to the map use should be performed in an observer
   observe({
     leafletProxy("map", data=reg) %>%
       addPolygons(color="black", weight=2, opacity=0.5, 
@@ -25,4 +23,5 @@ function(input, output, session) {
                        fillColor="red", fillOpacity=0.3)
   })
 
+  # TODO Add a legend for proportionnal circles radius
 }
