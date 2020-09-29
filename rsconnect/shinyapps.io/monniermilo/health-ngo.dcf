@@ -1,0 +1,10 @@
+name: health-ngo
+title:
+username:
+account: monniermilo
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2909296
+bundleId: 3683031
+url: https://monniermilo.shinyapps.io/health-ngo/
+when: 1601384047.09463
