@@ -28,20 +28,22 @@ bootstrapPage(
                 top=10, left="auto", right=10, bottom="auto",
                 width="auto", height="auto",
                 
+                # Filter NGOS by the domains of intervention
+                selectInput(
+                  "domaine", "Domaine d'intervention :",
+                  choices=keywords, selected="all"
+                ),
+                
                 # Let the user set the representation mode of the data: proportionnal 
                 # circles or choropleth map. 
                 radioButtons("maptype", "Type de représentation :",
                              c("Cercles proportionnels"="circles",
                                "Densité (/km2)"="density")
                 ),
-
-                # Filter NGOS by the domains of intervention
-                selectInput("domaine", "Domaine d'intervention :",
-                            choices=keywords, selected="all"
+                conditionalPanel(
+                  condition = "input.matype == 'circles",
+                  numericInput("a", "Size factor", value=0.1, min=0.1, max=2, step=0.1)
                 )
-                
-                
   )
-  
-  
 )
+

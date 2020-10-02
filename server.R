@@ -30,14 +30,16 @@ function(input, output, session) {
       fitBounds(bbox[1], bbox[2], bbox[3], bbox[4])
   })
   
+  log(1.1, 1.1)
+  log(10, 1.2)
   
   # On the static leaflet map previously created, map the data
   # Incremental changes to the map use should be performed in an observer
   observe({
     # Take static map and, every time input$ or dat() changes, clear polygons, markers
     # and legend. Add also senegalese external border with a thicker contour
-    data = rv()$reg
-    map = leafletProxy("map", data=data) %>%
+    reg = rv()$reg
+    map = leafletProxy("map", data=reg) %>%
       clearShapes() %>%
       clearMarkers() %>%
       clearControls() %>%
@@ -45,21 +47,22 @@ function(input, output, session) {
       addPolylines(data=sen, color="black", weight=4)
     # If circles, add circles proportionnal to the nb of NGOs in each region
     if (input$maptype=="circles") {
+      # Allow user to adjust circles size
+      ciclesRadius = reg$nb_ong * input$a
       map %>%
         addPolygons(color="black", weight=2, opacity=0.5,
                     fillColor="blue", fillOpacity=0.05,
                     label=~lib) %>%
         addCircleMarkers(~lng, ~lat, layerId=~id, 
-                         radius=~nb_ong/10, color="red", weight=1, opacity=0.5,
+                         radius=ciclesRadius, color="red", weight=1, opacity=0.5,
                          fillColor="red", fillOpacity=0.3,
                          label=~lib)
       # Else, display a choropleth map, discretized with Jenks algorithm, + legend
     } else if (input$maptype=="density") {
-      data = rv()$reg
-      var = data$nb_ong / data$area_km2 
+      densities = reg$nb_ong / reg$area_km2 
       nclass = 5
-      intervals = classIntervals(var, nclass, style="jenks")
-      classes = cut(var, intervals$brks, include.lowest=TRUE)
+      intervals = classIntervals(densities, nclass, style="jenks")
+      classes = cut(densities, intervals$brks, include.lowest=TRUE)
       colors = brewer.pal(nclass, "YlOrRd")
       col = colors[classes]
       map %>%
