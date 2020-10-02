@@ -1,13 +1,24 @@
 library(shiny)
 library(leaflet)
 library(sf)
+library(stringr)
+library(classInt)
+library(RColorBrewer)
 
-test = reg
 
 function(input, output, session) {
   
-  dat = reactive({
-    reg
+  # Filter the ONG, LINKS and REGS in function of the chosen domain
+  rv = reactive({
+    if (input$domaine!="all") {
+      ong = ong[str_detect(ong$dom, input$domaine), ]
+      link = link[link$ong %in% ong$id, ]
+    }
+    aggByReg = aggregate(link$ong, by=list(link$reg), length)
+    colnames(aggByReg) = c("id", "nb_ong")
+    reg$nb_ong = aggByReg$nb_ong[match(reg$id, aggByReg$id)]
+    reg = reg[!is.na(reg$nb_ong), ]
+    return(list(ong=ong, reg=reg, link=link))
   })
   
   # Create the static map, which will be loaded once at startup and then cached
@@ -25,26 +36,27 @@ function(input, output, session) {
   observe({
     # Take static map and, every time input$ or dat() changes, clear polygons, markers
     # and legend. Add also senegalese external border with a thicker contour
-    map = leafletProxy("map", data=dat()) %>%
+    data = rv()$reg
+    map = leafletProxy("map", data=data) %>%
       clearShapes() %>%
       clearMarkers() %>%
       clearControls() %>%
+      clearPopups() %>% 
       addPolylines(data=sen, color="black", weight=4)
-    # If circles chosen, add circles proportionnal to the number
-    #of NGOs on each region centroid (lng-lat)
+    # If circles, add circles proportionnal to the nb of NGOs in each region
     if (input$maptype=="circles") {
       map %>%
         addPolygons(color="black", weight=2, opacity=0.5,
                     fillColor="blue", fillOpacity=0.05,
                     label=~lib) %>%
-        addCircleMarkers(~lng, ~lat, 
-                         layerId=~id, 
+        addCircleMarkers(~lng, ~lat, layerId=~id, 
                          radius=~nb_ong/10, color="red", weight=1, opacity=0.5,
                          fillColor="red", fillOpacity=0.3,
                          label=~lib)
-    # Else, display a choropleth map, discretized with Jenks algorithm, and corresponding legend
+      # Else, display a choropleth map, discretized with Jenks algorithm, + legend
     } else if (input$maptype=="density") {
-      var = dat()$dens_km
+      data = rv()$reg
+      var = data$nb_ong / data$area_km2 
       nclass = 5
       intervals = classIntervals(var, nclass, style="jenks")
       classes = cut(var, intervals$brks, include.lowest=TRUE)
@@ -66,24 +78,17 @@ function(input, output, session) {
   
   # For circlesMarkers
   showMarkersPopup = function(id, lat, lng) {
-    selectedReg = reg[reg$id==id, ]
-    content = as.character(tagList(tags$h4("markerPopup. Nb d'ONG:", selectedReg$nb_ong)))
-    leafletProxy("map") %>% 
-      addPopups(lng, lat, content, layerId=id)
-  }
-  
-  # For polygons
-  showPolygonsPopup = function(id, lat, lng) {
-    selectedReg = reg[reg$id==id, ]
-    content = as.character(tagList(tags$h4("polygonPopup:", selectedReg$lib)))
+    reg = rv()$reg
+    reg = reg[reg$id==id, ]
+    content = as.character(tagList(
+      tags$h4("Nb d'ONG:", reg$nb_ong)))
+    # TODO: Improve Popup presentation
     leafletProxy("map") %>% 
       addPopups(lng, lat, content, layerId=id)
   }
   
   # When a circleMaker is clicked, show a popup
   observe({
-    leafletProxy("map") %>% 
-      clearPopups()
     event = input$map_marker_click
     if (is.null(event))
       return()
@@ -91,18 +96,5 @@ function(input, output, session) {
       showMarkersPopup(event$id, event$lat, event$lng)
     })
   })
-  
-  # When a region polygon is clicked, show a popup
-  observe({
-    leafletProxy("map") %>% 
-      clearPopups()
-    event = input$map_shape_click
-    if (is.null(event))
-      return()
-    isolate({
-      showPolygonsPopup(event$id, event$lat, event$lng)
-    })
-  })
-  
   
 }
