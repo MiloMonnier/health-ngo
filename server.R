@@ -8,10 +8,11 @@ library(RColorBrewer)
 
 function(input, output, session) {
   
-  # Filter the ONG, LINKS and REGS in function of the chosen domain
+  # Filter the ONG, LINKS and REGS in function of the chosen sectors
   rv = reactive({
-    if (input$domaine!="all") {
-      ong = ong[str_detect(ong$dom, input$domaine), ]
+    if (!is.null(input$sectors)) {
+      patterns = paste(input$sectors, collapse="|")
+      ong = ong[str_detect(ong$dom, patterns), ]
       link = link[link$ong %in% ong$id, ]
     }
     aggByReg = aggregate(link$ong, by=list(link$reg), length)
@@ -30,9 +31,6 @@ function(input, output, session) {
       fitBounds(bbox[1], bbox[2], bbox[3], bbox[4])
   })
   
-  log(1.1, 1.1)
-  log(10, 1.2)
-  
   # On the static leaflet map previously created, map the data
   # Incremental changes to the map use should be performed in an observer
   observe({
@@ -43,34 +41,37 @@ function(input, output, session) {
       clearShapes() %>%
       clearMarkers() %>%
       clearControls() %>%
-      clearPopups() %>% 
+      # clearPopups() %>%
       addPolylines(data=sen, color="black", weight=4)
     # If circles, add circles proportionnal to the nb of NGOs in each region
     if (input$maptype=="circles") {
       # Allow user to adjust circles size
-      ciclesRadius = reg$nb_ong * input$a
+      label = paste(reg$lib, ":", reg$nb_ong)
+      ciclesRadius = reg$nb_ong / 3 * input$size
       map %>%
         addPolygons(color="black", weight=2, opacity=0.5,
                     fillColor="blue", fillOpacity=0.05,
-                    label=~lib) %>%
+                    label=label) %>%
         addCircleMarkers(~lng, ~lat, layerId=~id, 
                          radius=ciclesRadius, color="red", weight=1, opacity=0.5,
                          fillColor="red", fillOpacity=0.3,
-                         label=~lib)
+                         label=label)
       # Else, display a choropleth map, discretized with Jenks algorithm, + legend
     } else if (input$maptype=="density") {
-      densities = reg$nb_ong / reg$area_km2 
+      densities = reg$nb_ong / reg$area_km2
+      # densities = round(reg$nb_ong / reg$area_km2, 3)
       nclass = 5
       intervals = classIntervals(densities, nclass, style="jenks")
       classes = cut(densities, intervals$brks, include.lowest=TRUE)
       colors = brewer.pal(nclass, "YlOrRd")
       col = colors[classes]
+      label = paste(reg$lib, ":", densities, "/km²")
       map %>%
         addPolygons(layerId=~id,
                     color="black", weight=2, opacity=0.3,
                     fillColor=col, fillOpacity=0.5,
-                    label=~lib) %>%
-        addLegend("bottomleft", title="Nb d'ONG/km²",
+                    label=label) %>%
+        addLegend("bottomleft", title="Nombre d'ONG/km²",
                   colors=rev(colors),  labels=rev(levels(classes)))
     }
     
@@ -87,6 +88,7 @@ function(input, output, session) {
       tags$h4("Nb d'ONG:", reg$nb_ong)))
     # TODO: Improve Popup presentation
     leafletProxy("map") %>% 
+      clearPopups() %>%
       addPopups(lng, lat, content, layerId=id)
   }
   
@@ -99,5 +101,4 @@ function(input, output, session) {
       showMarkersPopup(event$id, event$lat, event$lng)
     })
   })
-  
 }
