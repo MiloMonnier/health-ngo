@@ -4,21 +4,32 @@ library(sf)
 library(stringr)
 library(classInt)
 library(RColorBrewer)
+library(dplyr)
+library(DT)
 
 
 function(input, output, session) {
   
-  # Filter the ONG, LINKS and REGS in function of the chosen sectors
+  # Initialize the reactive values: everytime the user will change an input$,
+  # this block will be run. Other blocks observe({...}) will get the updated data
+  # through a rv()$... function.
   rv = reactive({
+    # Filter the ONGs and LINKs working in input sectors
     if (!is.null(input$sectors)) {
       patterns = paste(input$sectors, collapse="|")
       ong = ong[str_detect(ong$dom, patterns), ]
       link = link[link$ong %in% ong$id, ]
     }
-    aggByReg = aggregate(link$ong, by=list(link$reg), length)
-    colnames(aggByReg) = c("id", "nb_ong")
-    reg$nb_ong = aggByReg$nb_ong[match(reg$id, aggByReg$id)]
+    # Join the number of ONGs per region
+    aggOngByReg = aggregate(link$ong, by=list(link$reg), length)
+    colnames(aggOngByReg) = c("id", "nb_ong")
+    reg$nb_ong = aggOngByReg$nb_ong[match(reg$id, aggOngByReg$id)]
     reg = reg[!is.na(reg$nb_ong), ]
+    # Join the regions codes to ONGs, alphabetically sorted, separeted by commas
+    aggRegByOng = aggregate(link$reg, by=list(link$ong), FUN=function(x) paste(sort(x), collapse=", "))
+    colnames(aggRegByOng) = c("id", "regions")
+    ong$regions = aggRegByOng$regions[match(ong$id, aggRegByOng$id)]
+    
     return(list(ong=ong, reg=reg, link=link))
   })
   
@@ -34,20 +45,36 @@ function(input, output, session) {
   # On the static leaflet map previously created, map the data
   # Incremental changes to the map use should be performed in an observer
   observe({
+    
+    # Get back reactive values
+    ong = rv()$ong
+    link = rv()$link
+    reg = rv()$reg
+    
     # Take static map and, every time input$ or dat() changes, clear polygons, markers
     # and legend. Add also senegalese external border with a thicker contour
-    reg = rv()$reg
     map = leafletProxy("map", data=reg) %>%
       clearShapes() %>%
       clearMarkers() %>%
       clearControls() %>%
-      # clearPopups() %>%
+      clearPopups() %>%
       addPolylines(data=sen, color="black", weight=4)
+    
+    # If 1 row of ONG table is clicked, highlight the regions where ONG is located
+    if (!is.null(input$table_rows_selected)) {
+      ongID = ong[input$table_rows_selected, "id"]
+      regIDS = link[link$ong==ongID, "reg"]
+      selectedReg = reg[reg$id %in% regIDS, ]
+      map %>% 
+        addPolygons(data=selectedReg, color="red", weight=2, opacity=0.5,
+                  fillColor="red", fillOpacity=0.3)  %>%
+        addLegend("bottomleft", colors="red", opacity=0.3,
+                  labels="Régions d'intervention")
+      
     # If circles, add circles proportionnal to the nb of NGOs in each region
-    if (input$maptype=="circles") {
-      # Allow user to adjust circles size
+    } else if (input$maptype=="circles") {
       label = paste(reg$lib, ":", reg$nb_ong)
-      ciclesRadius = reg$nb_ong / 3 * input$size
+      ciclesRadius = reg$nb_ong / 3 * input$size # Allow user to set circles size
       map %>%
         addPolygons(color="black", weight=2, opacity=0.5,
                     fillColor="blue", fillOpacity=0.05,
@@ -56,7 +83,8 @@ function(input, output, session) {
                          radius=ciclesRadius, color="red", weight=1, opacity=0.5,
                          fillColor="red", fillOpacity=0.3,
                          label=label)
-      # Else, display a choropleth map, discretized with Jenks algorithm, + legend
+    
+    # Else, display a choropleth map, discretized with Jenks algorithm, + legend
     } else if (input$maptype=="density") {
       densities = reg$nb_ong / reg$area_km2
       # densities = round(reg$nb_ong / reg$area_km2, 3)
@@ -74,13 +102,10 @@ function(input, output, session) {
         addLegend("bottomleft", title="Nombre d'ONG/km²",
                   colors=rev(colors),  labels=rev(levels(classes)))
     }
-    
   })
   
   
-  # Create functions to show popup at given location
-  
-  # For circlesMarkers
+  # Show popup at given location when clicking on a marker 
   showMarkersPopup = function(id, lat, lng) {
     reg = rv()$reg
     reg = reg[reg$id==id, ]
@@ -101,4 +126,16 @@ function(input, output, session) {
       showMarkersPopup(event$id, event$lat, event$lng)
     })
   })
+  
+  
+  
+  ## RIGHT: DATA EXPLORER ######################################################
+  
+  # Display the NGOs table and filter it according to input 
+  output$table = DT::renderDataTable({
+    ong = rv()$ong
+    df = ong
+    DT::datatable(df, selection='single', rownames=FALSE)
+  })
+
 }
