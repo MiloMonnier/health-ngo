@@ -43,5 +43,5 @@ df = df[df$freq > 30, ]
 keywords = df$word
 names(keywords) = paste0(str_to_title(keywords), " (", df$freq,")")
 
-
+# For text-mining methods, see
 # http://www.sthda.com/french/wiki/text-mining-et-nuage-de-mots-avec-le-logiciel-r-5-etapes-simples-a-savoir

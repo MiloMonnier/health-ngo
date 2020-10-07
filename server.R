@@ -18,14 +18,17 @@ function(input, output, session) {
   # through a rv()$... function.
   rv = reactive({
     
-    # Filter the ONGs and LINKs working in input sectors
+    # Filter the ONGs:
+    # In function of their domains
     if (!is.null(input$keywords)) {
-      # patterns = paste(input$sectors, collapse="|")
-      ong = ong[str_detect(ong$domaines, input$keywords), ]
-      link = link[link$ong %in% ong$id, ]
+      patterns = paste(input$sectors, collapse="|")
+      ong = ong[str_detect(ong$domaines, patterns), ]
     }
+    # In function of their number of regions covered
+    ong = ong[ong$n_reg >= input$minreg, ]
     
-    # Join the number of ONGs per region
+    # Filter LINKs also, and join the number of ONGs per region
+    link = link[link$ong %in% ong$id, ]
     aggOngByReg = aggregate(link$ong, by=list(link$reg), length)
     colnames(aggOngByReg) = c("id", "nb_ong")
     reg$nb_ong = aggOngByReg$nb_ong[match(reg$id, aggOngByReg$id)]
@@ -148,7 +151,7 @@ function(input, output, session) {
     
     # Get back filtered ONG data and rename columns
     ong = rv()$ong
-    # ong = ong
+    
     # Filter the columns to display in function of user input
     colnames(ong) = names(ongCols)
     ong = ong[, input$show_cols, drop=FALSE]

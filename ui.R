@@ -51,23 +51,26 @@ splitLayout(cellWidths=c("40%","60%"),
   ## DATA EXPLORER (RIGHT) ####################################################
   
   fluidPage(
-  
+    
+    # Control Panel in topright corner
     fluidRow(
       # Filter NGOS by their different domains of intervention
-      column(4, selectInput("keywords", "Mots-clés :",
-                            choices=c("All"="", keywords))
+      column(4, selectizeInput("keywords", "Mots-clés :",
+                               choices=c("All"="", keywords),
+                               multiple=TRUE)
+      ),
+      # Filter ONGs in function of the number of regions of locations
+      column(4, numericInput("minreg", "Nb min. de régions :",
+                             min=1, max=14, value=1)
       ),
       # Allow user to display or not wanted columns
       column(4, selectizeInput("show_cols", "Colonnes à afficher :",
                                choices=names(ongCols),
                                selected=names(ongCols)[2:3],
                                multiple=TRUE)
-      )#,
-      # Filter ONGs in function of the number of regions of locations
-      # column(4, numericInput("minreg", "Nb min. de régions couvertes :",
-      #                        min=1, max=14, value=5)
-      # )
+      )
     ),
+    
     # Display the data table below
     hr(),
     fluidRow(
