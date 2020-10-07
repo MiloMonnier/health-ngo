@@ -1,22 +1,13 @@
 library(leaflet)
 library(DT)
 
-keywords = c(
-  "agriculture",
-  "education",
-  "enfance",
-  "sante",
-  "vih",
-  "sida",
-  "iec"
-)
-names(keywords) = str_to_title(keywords)
+
 
 
 # Create a page with several tabs
 splitLayout(cellWidths=c("40%","60%"),
 
-  ## LEFT: INTERACTTIVE MAP ####################################################
+  ## INTERACTTIVE MAP (LEFT) ###################################################
 
   div(class="outer",
     
@@ -30,10 +21,8 @@ splitLayout(cellWidths=c("40%","60%"),
     
     # Add a control panel on the left to set the map representation
     absolutePanel(id="controls", class="panel panel-default",
-                  top=30, left=10, right="auto", bottom="auto",
-                  width=300, height="auto", draggable=TRUE,
-                  
-
+                  top="auto", left=5, right="auto", bottom="auto",
+                  width="auto", height="auto",
                   
                   # Let the user set the representation mode of the data: proportionnal 
                   # circles or choropleth map. 
@@ -41,13 +30,13 @@ splitLayout(cellWidths=c("40%","60%"),
                                c("Densité (/km2)"="density",
                                  "Cercles proportionnels"="circles"),
                                selected="circles" 
-                  ),
+                  )#,
                   
                   # If proportionnal circles chosen, allow user to adjust the circles size
-                  conditionalPanel("input.maptype == 'circles'",
-                    sliderInput("size", h5("Taille des cercles :"),
-                                min=0.1, max=1, value=0.5, step=0.1)
-                  )
+                  # conditionalPanel("input.maptype == 'circles'",
+                  #   sliderInput("size", h5("Taille des cercles :"),
+                  #               min=0.1, max=1, value=0.5, step=0.1)
+                  # )
     ),
     
     # Add a clickable logo of Geomatica
@@ -55,26 +44,34 @@ splitLayout(cellWidths=c("40%","60%"),
                   tags$a(href='https://www.geomatica-services.com/', 
                     tags$img(src='logo_geomatica.jpeg', height=30))
     )
-
+    
   ),
   
   
-  ## DATA EXPLORER #############################################################
-  fluidRow(
-    
-    # Filter NGOS by their different domains of intervention
-    column(6,
-      selectInput("sectors", "Secteurs d'intervention:", keywords, multiple=TRUE)
+  ## DATA EXPLORER (RIGHT) ####################################################
+  
+  fluidPage(
+  
+    fluidRow(
+      # Filter NGOS by their different domains of intervention
+      column(4, selectInput("keywords", "Mots-clés :",
+                            choices=c("All"="", keywords))
+      ),
+      # Allow user to display or not wanted columns
+      column(4, selectizeInput("show_cols", "Colonnes à afficher :",
+                               choices=names(ongCols),
+                               selected=names(ongCols)[2:3],
+                               multiple=TRUE)
+      )#,
+      # Filter ONGs in function of the number of regions of locations
+      # column(4, numericInput("minreg", "Nb min. de régions couvertes :",
+      #                        min=1, max=14, value=5)
+      # )
     ),
-    column(6,
-      verbatimTextOutput("txt")
-    ),
-    
     # Display the data table below
     hr(),
-    column(12,
-      DT::dataTableOutput("table")
+    fluidRow(
+      column(12, DT::dataTableOutput("table"))
     )
   )
-
 )
